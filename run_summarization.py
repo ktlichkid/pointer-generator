@@ -242,6 +242,7 @@ def run_training(model, batcher, sess_context_manager, sv, summary_writer):
         if FLAGS.debug:  # start the tensorflow debugger
             sess = tf_debug.LocalCLIDebugWrapperSession(sess)
             sess.add_tensor_filter("has_inf_or_nan", tf_debug.has_inf_or_nan)
+        n_step = 0
         while True:  # repeats until interrupted
             batch = batcher.next_batch()
 
@@ -250,9 +251,10 @@ def run_training(model, batcher, sess_context_manager, sv, summary_writer):
             results = model.run_train_step(sess, batch)
             t1 = time.time()
             tf.logging.info('seconds for training step: %.3f', t1 - t0)
+            n_step += 1
 
             loss = results['loss']
-            tf.logging.info('loss: %f', loss)  # print the loss to screen
+            tf.logging.info('step: %d, loss: %f', n_step, loss)  # print the loss to screen
 
             if not np.isfinite(loss):
                 raise Exception("Loss is not finite. Stopping.")
