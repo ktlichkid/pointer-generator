@@ -49,7 +49,7 @@ tf.app.flags.DEFINE_boolean(
 tf.app.flags.DEFINE_string('log_root', './chkpnt',
                            'Root directory for all logging.')
 tf.app.flags.DEFINE_string(
-    'exp_name', 'expsmall',
+    'exp_name', 'pretrained',
     'Name for experiment. Logs will be saved in a directory with this name, under log_root.'
 )
 
