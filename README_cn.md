@@ -13,7 +13,7 @@ Pointer-generator模型是Stanford的Abigail See和Google Brain在2017年合作�
 运行前请务必核对这些数字准确无误。
 
 ## 训练流程
-### 训练及Validation概况和原理
+### 训练及Evaluation概况和原理
 如果一开始就用完整的文章作为网络的input来训练，由于文章较长，那么训练速度会过于慢。
 因此作者在整个训练过程中将文章长度截断在400词，并且将生成的摘要长度限制在100词（在最后预测阶段，这一长度为120词）。
 同时为了进一步提高效率，在训练的早期，作者会将文章截到更短，并在训练过程中逐渐放宽文章长度限制，直到最终达到400词。
@@ -23,7 +23,7 @@ Pointer-generator模型是Stanford的Abigail See和Google Brain在2017年合作�
 这样做的目的作者并未说明，但我认为这是因为重复的问题一般多出现于训练好的模型中，因此先训到收敛再开启coverage会比较有效。
 coverage机制的加入会引入新的可训练参数。如果要用Paddle Fluid来实现这样的训练流程，可能需要在模型存取方面做一些扩展。
 
-训练过程中程序不会自动计算validation集上的loss. 
+我们在训练过程中可能会需要知道模型在validation集上的效果。但训练过程中程序不会自动计算validation集上的loss. 
 因此，要做validation的话，需要在训练的同时，另启动一个任务来做validation，
 这个任务会每步读取训练任务新生成的checkpoint，计算其在validation集上的loss，并且不断将其中较好的模型保存下来。
 
@@ -37,27 +37,28 @@ coverage机制的加入会引入新的可训练参数。如果要用Paddle Fluid
 python run_summarization.py --mode=train --max_enc_steps=10 --max_dec_steps=10
 --data_path=/path/to/chunked/train_* --vocab_path=/path/to/vocab --log_root=/path/to/a/log/directory --exp_name=myexperiment
 ```
-这里先将`max_enc_steps`和`max_dec_steps`设为10，即将文章截得很短来训练。
+这里先将`max_enc_steps`和`max_dec_steps`设为10，也就是将文章截得很短来训练。
 
 这里用`--mode=train`来指定是训练。
 `--data_path`参数用来指定数据文件，可以用`*`通配符来指定多个文件，这里就是指定`train_*.bin`文件们。
 `--vocab_path`参数用来指定字典文件，即`vocab`文件。`--log_root`指定checkpoint文件的保存路径。`--exp_name`指定此次任务的名称。
-这些参数是每次运行时都会需要指定的。
+这些参数是每次运行时都会需要指定的，接下来将不再赘述。
 
 然后启动Evaluation任务：
 ```sh
 python run_summarization.py --max_enc_steps=400 --max_dec_steps=100
 --mode=eval --data_path=/path/to/chunked/val_* --vocab_path=/path/to/vocab --log_root=/path/to/a/log/directory --exp_name=myexperiment
 ```
-注意这里`max_enc_steps`和`max_dec_steps`的值为400和100，validation时不将input文段截短。
-另外，用`--data_path`指定的数据文件是`val_*.bin`，即validation数据集。
+注意这里`max_enc_steps`和`max_dec_steps`的值为400和100，也就是说validation时不改变input文段的长度。
+另外，用`--data_path`指定的数据文件是`val_*.bin`，即validation数据集。用`--mode=eval`来指定这是evaluation的任务。
 其他参数需要与训练脚本的运行参数保持一致。
+
 Evaluation任务启动后无需停止，一直运行下去就可以了，它会自动将最优模型保存下来。
 
 #### 2. 逐步增大`max_enc_steps`和`max_dec_steps`
 在训练到约71k步后，重启训练任务，修改参数为`--max_enc_steps=50 --max_dec_steps=50`，其余不变。
 
-在训练到约116k步后，重启训练任务，修改参数为`--max_enc_steps=50 --max_dec_steps=50`，其余不变。
+在训练到约116k步后，重启训练任务，修改参数为`--max_enc_steps=100 --max_dec_steps=50`，其余不变。
 
 在训练到约184k步后，重启训练任务，修改参数为`--max_enc_steps=200 --max_dec_steps=50`，其余不变。
 
@@ -86,11 +87,15 @@ python run_summarization.py --mode=train --max_enc_steps=400 --max_dec_steps=100
 python run_summarization.py --mode=decode --max_enc_steps=400 --max_dec_steps=120 --coverage=1 --single_pass=1
 --data_path=/path/to/data/test_* --vocab_path=/path/to/data/vocab --log_root=/path/to/a/log/directory --exp_name=myexperiment
 ```
-这里需要将`--mode`设为`decode`，而将`single_pass`设为`True`，这样会将预测结果以`txt`文件形式存到log目录下。
+这里需要将`--mode`设为`decode`，同时要将`single_pass`设为`True`，这样会将预测结果以`txt`文件形式存到log目录下。
 注意`data_path`需要指定test数据集即`test_*.bin`文件。
+
 之后可以用`rouge_cal.py`脚本来计算Rouge值。最终可以得到Rouge1 0.38，Rouge2 0.16，RougeL 0.34左右。
 
 ## 对照试验的结果
 除了作者的训练方法外，我也尝试了一开始就使用较长的文章来训练。
+具体而言是一开始就将`max_enc_steps`设为200，将`max_dec_steps`设为50，在训练到约100k步后增大这两个值到400，100. 
+之后在230k步左右加入coverage.
+
 实际上不同于作者所说，这样的结果要略好于作者所采用的训练方法，有Rouge1 0.39, Rouge2 0.16, RougeL 0.35左右。
 因此对齐baseline时一定要注意选用完全相同的训练步骤。
