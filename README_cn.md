@@ -92,5 +92,5 @@ python run_summarization.py --mode=decode --max_enc_steps=400 --max_dec_steps=12
 
 ## 对照试验的结果
 除了作者的训练方法外，我也尝试了一开始就使用较长的文章来训练。
-实际上不同于作者所说，这样的结果要好于作者所采用的训练方法，有Rouge1 0.39, Rouge2 0.16, RougeL 0.35左右。
-因此对齐baseline时一定要注意选用相同的训练步骤。
+实际上不同于作者所说，这样的结果要略好于作者所采用的训练方法，有Rouge1 0.39, Rouge2 0.16, RougeL 0.35左右。
+因此对齐baseline时一定要注意选用完全相同的训练步骤。
